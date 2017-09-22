@@ -63,6 +63,8 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
     ekf_.x_ = VectorXd(4);
     ekf_.x_ << 1, 1, 1, 1;
 
+    cout << "measurement_pack.sensor_type_:" << measurement_pack.sensor_type_ << endl;
+    cout << "is radar:" << (measurement_pack.sensor_type_==MeasurementPackage::RADAR) << endl;
     if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR) {
       /**
       Convert radar from polar to cartesian coordinates and initialize state.

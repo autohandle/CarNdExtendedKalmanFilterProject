@@ -26,18 +26,109 @@ std::string hasData(std::string s) {
   return "";
 }
 
-int main()
-{
-  uWS::Hub h;
+MeasurementPackage createMeasurementPackage(std::string theSensorMeasurement) {
+    
+    MeasurementPackage measurementPackage;
+    
+    istringstream iss(theSensorMeasurement);
+    long long timestamp;
+    
+    // reads first element from the current line
+    string sensorType;
+    iss >> sensorType;
+    
+    if (sensorType.compare("L") == 0) {
+        
+        measurementPackage.sensor_type_ = MeasurementPackage::LASER;
+        measurementPackage.raw_measurements_ = VectorXd(2);
+        float px;
+        float py;
+        iss >> px;
+        iss >> py;
+        measurementPackage.raw_measurements_ << px, py;
+        iss >> timestamp;
+        measurementPackage.timestamp_ = timestamp;
+        
+    } else if (sensorType.compare("R") == 0) {
+        
+        measurementPackage.sensor_type_ = MeasurementPackage::RADAR;
+        measurementPackage.raw_measurements_ = VectorXd(3);
+        float ro;
+        float theta;
+        float ro_dot;
+        iss >> ro;
+        iss >> theta;
+        iss >> ro_dot;
+        measurementPackage.raw_measurements_ << ro,theta, ro_dot;
+        iss >> timestamp;
+        measurementPackage.timestamp_ = timestamp;
+    }
+    
+    return measurementPackage;
+}
 
-  // Create a Kalman Filter instance
-  FusionEKF fusionEKF;
+int runAsServer(FusionEKF theFusionEKF) {
+    
+    return 0;
+}
+
+#include "KalmanMatrix.hpp"
+
+int runAsFileProcessor(FusionEKF theFusionEKF, std::string theFileName) {
+    
+    ifstream measurementFile;
+    measurementFile.open(theFileName, ios::in);
+    cout<<"theFileName: <"<< theFileName << ">, is_open? " << measurementFile.is_open() << "\n";
+    
+    int noise_ax = 5;
+    int noise_ay = 5;
+    VectorXd noise = VectorXd(2);
+    noise << noise_ax, noise_ay;
+    if (KalmanMatrix::TESTING) std::cout << "noise:" <<  noise << std::endl;
+    
+    if (measurementFile.is_open()) {
+        cout<<"theFileName: "<< theFileName << "\n";
+        string measurementLine;
+        while ( getline (measurementFile, measurementLine) ){
+            cout << "<" << measurementLine << ">\n";
+            MeasurementPackage measurementPackage = createMeasurementPackage(measurementLine);
+            MatrixXd Q = KalmanMatrix::makeQ(1., measurementPackage.raw_measurements_, noise);
+            std::cout << "Q:" <<  KalmanMatrix::toString(Q) << std::endl;
+            theFusionEKF.ProcessMeasurement(measurementPackage);
+        }
+    } else {
+        cout<<"theFileName: <"<< theFileName << "> failed to open\n";
+        return 1;
+    }
+    measurementFile.close();
+    return 0;
+}
+
+int main(int argc, char *argv[] )
+{
+    // Create a Kalman Filter instance
+    FusionEKF fusionEKF;
+
+    int status=0;
+    
+    cout<<"argc: "<< argc <<"\n";
+    if (argc>1) {
+        cout<<"argv[0]: "<< argv[0] <<"\n";
+        status=runAsFileProcessor(fusionEKF, argv[1]);
+    } else {
+        
+    }
+  cout<<"status: "<< status <<"\n";
+  return(status);
+    
 
   // used to compute the RMSE later
   Tools tools;
   vector<VectorXd> estimations;
   vector<VectorXd> ground_truth;
 
+  uWS::Hub h;
+    
   h.onMessage([&fusionEKF,&tools,&estimations,&ground_truth](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -56,6 +147,8 @@ int main()
         if (event == "telemetry") {
           // j[1] is the data JSON object
           
+          // sensor_measurment is just the straight data:
+          // "L 3.122427e-01 5.803398e-01 1477010443000000 6.000000e-01 6.000000e-01 5.199937e+00 0 0 6.911322e-03"
           string sensor_measurment = j[1]["sensor_measurement"];
           
           MeasurementPackage meas_package;
@@ -163,7 +256,7 @@ int main()
   });
 
   h.onConnection([&h](uWS::WebSocket<uWS::SERVER> ws, uWS::HttpRequest req) {
-    std::cout << "Connected!!!" << std::endl;
+    std::cout << "Connected Now2!!!" << std::endl;
   });
 
   h.onDisconnection([&h](uWS::WebSocket<uWS::SERVER> ws, int code, char *message, size_t length) {
