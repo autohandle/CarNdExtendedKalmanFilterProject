@@ -25,6 +25,8 @@ public:
   * Run the whole flow of the Kalman Filter from here.
   */
   void ProcessMeasurement(const MeasurementPackage &measurement_pack);
+  void updateFromLaser(double dt, const MeasurementPackage &measurement_pack);
+  void updateFromRadar(double dt, const MeasurementPackage &measurement_pack);
 
   /**
   * Kalman Filter update and prediction math lives in here.
@@ -40,10 +42,16 @@ private:
 
   // tool object used to compute Jacobian and RMSE
   Tools tools;
+    
   Eigen::MatrixXd R_laser_;
   Eigen::MatrixXd R_radar_;
   Eigen::MatrixXd H_laser_;
   Eigen::MatrixXd Hj_;
+    
+  Eigen::VectorXd processNoise;
+  Eigen::VectorXd measurementNoiseRadar;
+  Eigen::VectorXd measurementNoiseLidar;
+
 };
 
 #endif /* FusionEKF_H_ */

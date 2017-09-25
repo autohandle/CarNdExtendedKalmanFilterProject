@@ -72,7 +72,6 @@ int runAsServer(FusionEKF theFusionEKF) {
     return 0;
 }
 
-#include "KalmanMatrix.hpp"
 
 int runAsFileProcessor(FusionEKF theFusionEKF, std::string theFileName) {
     
@@ -84,7 +83,7 @@ int runAsFileProcessor(FusionEKF theFusionEKF, std::string theFileName) {
     int noise_ay = 5;
     VectorXd noise = VectorXd(2);
     noise << noise_ax, noise_ay;
-    if (KalmanMatrix::TESTING) std::cout << "noise:" <<  noise << std::endl;
+    if (Tools::TESTING) std::cout << "noise:" <<  noise << std::endl;
     
     if (measurementFile.is_open()) {
         cout<<"theFileName: "<< theFileName << "\n";
@@ -92,8 +91,8 @@ int runAsFileProcessor(FusionEKF theFusionEKF, std::string theFileName) {
         while ( getline (measurementFile, measurementLine) ){
             cout << "<" << measurementLine << ">\n";
             MeasurementPackage measurementPackage = createMeasurementPackage(measurementLine);
-            MatrixXd Q = KalmanMatrix::makeQ(1., measurementPackage.raw_measurements_, noise);
-            std::cout << "Q:" <<  KalmanMatrix::toString(Q) << std::endl;
+            MatrixXd Q = Tools::makeQ(1., measurementPackage.raw_measurements_, noise);
+            std::cout << "Q:" <<  Tools::toString(Q) << std::endl;
             theFusionEKF.ProcessMeasurement(measurementPackage);
         }
     } else {
