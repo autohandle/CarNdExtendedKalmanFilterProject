@@ -9,7 +9,8 @@ public:
 
   enum SensorType{
     LASER,
-    RADAR
+    RADAR,
+    INVALID=-1
   } sensor_type_;
 
   Eigen::VectorXd raw_measurements_;

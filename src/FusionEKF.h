@@ -25,8 +25,8 @@ public:
   * Run the whole flow of the Kalman Filter from here.
   */
   void ProcessMeasurement(const MeasurementPackage &measurement_pack);
-  void updateFromLaser(double dt, const MeasurementPackage &measurement_pack);
-  void updateFromRadar(double dt, const MeasurementPackage &measurement_pack);
+  void updateFromLaser(double dt, const VectorXd &x);
+  void updateFromRadar(double dt, const VectorXd &x);
 
   /**
   * Kalman Filter update and prediction math lives in here.

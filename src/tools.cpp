@@ -1,5 +1,6 @@
 #include <iostream>
 #include "tools.h"
+#include <math.h>
 
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
@@ -25,7 +26,7 @@ MatrixXd Tools::CalculateHj(const VectorXd& x_state) {
     
     //check division by zero
     if(fabs(c1) < 0.0001){
-        cout << "CalculateJacobian () - Error - Division by Zero" << endl;
+        cout << "Tools::CalculateHj- () - Error - Division by Zero" << endl;
         return Hj;
     }
     
@@ -53,7 +54,7 @@ VectorXd Tools::CalculateRMSE(const vector<VectorXd> &estimations,
     //  * the estimation vector size should equal ground truth vector size
     if(estimations.size() != ground_truth.size()
        || estimations.size() == 0){
-        cout << "Invalid estimation or ground_truth data" << endl;
+        cout << "Tools::CalculateRMSE-Invalid estimation or ground_truth data" << endl;
         return rmse;
     }
     
@@ -77,50 +78,75 @@ VectorXd Tools::CalculateRMSE(const vector<VectorXd> &estimations,
     return rmse;
 }
 
-void Tools::filter(VectorXd &x, MatrixXd &P, MatrixXd F, MatrixXd Q, VectorXd z, MatrixXd H, MatrixXd R, MatrixXd I) {
+void Tools::filter(VectorXd &x, MatrixXd &P, const MatrixXd &F, const MatrixXd &Q, const VectorXd &z, const MatrixXd &H, const MatrixXd &R, const MatrixXd &I, const bool isRadar) {
     //YOUR CODE HERE
     predict(x, P, F, Q);
-    measurementUpdate(x, P, z, H, R, I);
-    std::cout << "x=" << std::endl <<  x << std::endl;
-    std::cout << "P=" << std::endl <<  P << std::endl;
+    measurementUpdate(x, P, z, H, R, I, isRadar);
+    std::cout << "Tools::filter-x=" << std::endl <<  x << std::endl;
+    std::cout << "Tools::filter-P=" << std::endl <<  P << std::endl;
 }
 
-void Tools::predict(VectorXd &x, MatrixXd &P, MatrixXd F, MatrixXd Q ) {
+void Tools::predict(VectorXd &x, MatrixXd &P, const MatrixXd &F, const MatrixXd &Q ) {
     /*
      * KF Prediction step
      */
-    std::cout << "x=" << Tools::toString(x) << ", F=" << Tools::toString(F) << std::endl;
+    std::cout << "Tools::predict-x=" << Tools::toString(x) << ", F=" << Tools::toString(F) << std::endl;
     x = F * x;
     MatrixXd Ft = F.transpose();
-    std::cout << "Ft=" << Tools::toString(Ft) << ", P=" << Tools::toString(P) << ", Q=" << Tools::toString(Q) << std::endl;
+    std::cout << "Tools::predict-F=" << Tools::toString(F) << std::endl
+                << "P:" << Tools::toString(P) << std::endl
+                << "Q:" << Tools::toString(Q) << std::endl;
     P = F * P * Ft + Q;
 }
 
-void Tools::measurementUpdate(VectorXd &x, MatrixXd &P, VectorXd z, MatrixXd H, MatrixXd R, MatrixXd I) {
+void Tools::measurementUpdate(VectorXd &x, MatrixXd &P, const VectorXd &z, const MatrixXd &H, const MatrixXd &R, const MatrixXd &I, const bool isRadar) {
     /*
      * KF Measurement update step
      */
-    std::cout << "measurementUpdate-x=" << Tools::toString(x) << "," << std::endl <<
-        "z=" << Tools::toString(z) << std::endl << "," <<
-        "H" << Tools::toString(H) << std::endl;
-    VectorXd y = z - H * x;
+    if (TESTING) {
+        std::cout << "Tools::measurementUpdate-x=" << Tools::toString(x) << std::endl
+                << "H" << Tools::toString(H) << std::endl
+                << "P" << Tools::toString(P) << std::endl
+                << "R" << Tools::toString(R) << std::endl
+                << "isRadar?" << isRadar << std::endl
+        ;
+    }
+    VectorXd measurementPredicted = H * x;
+    VectorXd y = z-measurementPredicted; // y[1] is phi for radar: 0:rho 1:phi 2:rho dot
+    if (isRadar) {
+        if (TESTING) {
+            std::cout << "Tools::measurementUpdate-y=" << Tools::toString(y) << std::endl
+            ;
+        }
+        y(1)=normalizeAngle(y(1));
+        if (TESTING) {
+            std::cout << "Tools::measurementUpdate-y=" << Tools::toString(y) << std::endl
+            ;
+        }
+    }
     MatrixXd Ht = H.transpose();
-    std::cout << "measurementUpdate-y=" << Tools::toString(y) << "," << std::endl <<
-    "R=" << Tools::toString(R) << std::endl << "," <<
-    "Ht" << Tools::toString(Ht) << std::endl;
+    if (TESTING) {
+        std::cout << "measurementPredicted=" << Tools::toString(measurementPredicted) << std::endl
+                  << "z=" << Tools::toString(z) << std::endl
+                  << "R=" << Tools::toString(R) << std::endl
+        ;
+    }
     MatrixXd S = H * P * Ht + R;
     MatrixXd Si = S.inverse();
     MatrixXd K =  P * Ht * Si;
     
     //new state
     x = x + (K * y);
-    std::cout << "measurementUpdate-I=" << Tools::toString(I) << "," << std::endl <<
-    "K=" << Tools::toString(K) << std::endl;
     P = (I - K * H) * P;
+    if (TESTING) {
+        std::cout << "Tools::measurementUpdate-new state-x=" << Tools::toString(x) << std::endl
+        << "P=" << Tools::toString(P) << std::endl
+        ;
+    }
     
 }
 
-VectorXd Tools::updateX(VectorXd &x, const VectorXd &theMeasurement ) {
+VectorXd Tools::updateX(VectorXd &x, const VectorXd &theMeasurement ) {// initialize x from 1st measurement 
     assert(x.size() >= theMeasurement.size());
     for (int i=0; i<theMeasurement.size(); i++) {
         x(i)=theMeasurement(i);
@@ -130,81 +156,91 @@ VectorXd Tools::updateX(VectorXd &x, const VectorXd &theMeasurement ) {
 
 
 MatrixXd Tools::makeF(float deltaT, VectorXd theMeasurements) {
-    if (TESTING) std::cout << "makeF-theMeasurements" <<  Tools::toString(theMeasurements) << std::endl;
+    if (TESTING) std::cout << "Tools::makeF-theMeasurements" <<  Tools::toString(theMeasurements) << std::endl;
     int numberOfMeasurements = theMeasurements.size();
-    if (TESTING) std::cout << "makeF-numberOfMeasurements:" <<  numberOfMeasurements << std::endl;
+    if (TESTING) std::cout << "Tools::makeF-numberOfMeasurements:" <<  numberOfMeasurements << std::endl;
     return makeF(deltaT, numberOfMeasurements);
 }
 
 MatrixXd Tools::makeF(float deltaT, int theNumberOfPositions) {
-    if (TESTING) std::cout << "makeF-theNumberOfPositions:" <<  theNumberOfPositions << std::endl;
+    if (TESTING) std::cout << "Tools::makeF-theNumberOfPositions:" <<  theNumberOfPositions << std::endl;
     // for every position there is a velocity
-    MatrixXd f = MatrixXd::Identity(theNumberOfPositions, theNumberOfPositions);
+    MatrixXd F = MatrixXd::Identity(theNumberOfPositions, theNumberOfPositions);
     
-    f=updateF(deltaT, &f);
-    if (TESTING) std::cout << "makeF-f" <<  toString(f) << std::endl;
-    return f;
+    F=updateF(deltaT, F);
+    if (TESTING) std::cout << "Tools::makeF-f" <<  toString(F) << std::endl;
+    return F;
 }
 
-MatrixXd Tools::updateF(float deltaT, MatrixXd *F) {
-    if (TESTING) std::cout << "updateF-deltaT" <<  deltaT << std::endl;
+MatrixXd Tools::updateF(const float deltaT, MatrixXd &F) {
+    if (TESTING) std::cout << "Tools::updateF-deltaT:" <<  deltaT << std::endl;
     // every position measurement is adjust by its velocity
-    int derivativeLocation=(*F).rows()/2;
+    int derivativeLocation=F.rows()/2;
     for (int row=0; row<derivativeLocation; row++) {
         int column=derivativeLocation+row;
-        if (TESTING) std::cout << "updateF-F" <<  "row:" << row << "=" << toString(*F) << std::endl;
-        (*F)(row,column)=deltaT;
+        if (TESTING) std::cout << "Tools::updateF-F[" <<  "row:" << row << "]=" << toString(F) << std::endl;
+        F(row,column)=deltaT;
     }
     
-    if (TESTING) std::cout << "updateF-F" <<  toString(*F) << std::endl;
+    if (TESTING) std::cout << "Tools::updateF-F" <<  toString(F) << std::endl;
     
-    return (*F);
+    return F;
 }
 
 #include <sstream>
 
-MatrixXd Tools::makeQ(float deltaT, VectorXd theMeasurements, VectorXd theNoise) {
-    if (Tools::TESTING) std::cout << "makeQ-theMeasurements" <<  Tools::toString(theMeasurements) << std::endl;
-    if (Tools::TESTING) std::cout << "makeQ-theNoise" <<  Tools::toString(theNoise) << std::endl;
+MatrixXd Tools::makeQ(const float deltaT, const VectorXd &theStateVector, const VectorXd &theNoise) {
+    if (Tools::TESTING) std::cout << "Tools::makeQ-theStateVector" <<  Tools::toString(theStateVector) << std::endl;
+    if (Tools::TESTING) std::cout << "Tools::makeQ-theNoise" <<  Tools::toString(theNoise) << std::endl;
     //assert(theMeasurements.size()==theNoise.size()); // assumes #(px,py,...) == #(vx,vy, ...)
-    int numberOfMeasurements = theMeasurements.size();
-    if (TESTING) std::cout << "makeQ-numberOfMeasurements:" <<  numberOfMeasurements << std::endl;
-    return makeQ(deltaT, numberOfMeasurements, theNoise);
+    int stateVectorSize = theStateVector.size();
+    if (TESTING) std::cout << "Tools::makeQ-stateVectorSize:" <<  stateVectorSize << std::endl;
+    return makeQ(deltaT, stateVectorSize, theNoise);
 }
 
-MatrixXd Tools::makeQ(float deltaT, int theNumberOfMeasurements, VectorXd theNoise) {
-    if (Tools::TESTING) std::cout << "makeQ-theNumberOfMeasurements:" <<  theNumberOfMeasurements << std::endl;
+MatrixXd Tools::makeQ(const float deltaT, const int theStateVectorSize, const VectorXd &theNoise) {
+    if (Tools::TESTING) std::cout << "makeQ-theStateVectorSize:" <<  theStateVectorSize << std::endl;
     // for every position there is a velocity
-    MatrixXd Q = MatrixXd(theNumberOfMeasurements, theNumberOfMeasurements);
-    
-    return Tools::updateQ(deltaT, theNoise, &Q);
+    MatrixXd Q = MatrixXd(theStateVectorSize, theStateVectorSize);
+    return Tools::updateQ(deltaT, theNoise, Q);
     MatrixXd x;
     return x;
 }
 
-MatrixXd Tools::updateQ(float deltaT, VectorXd theNoise, MatrixXd *Q) {
+MatrixXd Tools::updateQ(const float deltaT, const VectorXd &theNoise, MatrixXd &Q) {
+    assert (deltaT<1) ;
     // initialize Q
-    (*Q).fill(0.);
-    if (Tools::TESTING) std::cout << "updateQ-deltaT:" <<  deltaT << std::endl;
+    Q.fill(0.);
+    if (Tools::TESTING) {
+        std::cout << "updateQ-deltaT:" <<  deltaT << std::endl
+        << "theNoise:" << Tools::toString(theNoise) << std::endl;
+    }
     // initialialize top half of Q
     double quadConstant=(deltaT*deltaT*deltaT*deltaT)/4.;
     double cubeConstant=(deltaT*deltaT*deltaT)/2.;
-    int numberOfMeasurements = (*Q).rows()/2;
-    for (int row=0; row<numberOfMeasurements; row++) {
-        (*Q)(row, row)=quadConstant*theNoise(row);
-        int column=numberOfMeasurements+row;
-        (*Q)(row, column)=cubeConstant*theNoise(row);
+    int numberOfStateVariables = Q.rows()/2;
+    if (Tools::TESTING) {
+        std::cout << "updateQ-cubeConstant:" <<  cubeConstant << std::endl
+                    << "quadConstant:" <<  quadConstant << std::endl
+                    << "numberOfStateVariables:" <<  numberOfStateVariables << std::endl
+        ;
+
     }
-    if (Tools::TESTING) std::cout << "updateQ-updateQ-top half-Q" <<  Tools::toString(*Q) << std::endl;
+    for (int row=0; row<numberOfStateVariables; row++) {
+        Q(row, row)=quadConstant*theNoise(row);
+        int column=numberOfStateVariables+row;
+        Q(row, column)=cubeConstant*theNoise(row);
+    }
+    if (Tools::TESTING) std::cout << "updateQ-updateQ-top half-Q" <<  Tools::toString(Q) << std::endl;
     // initialialize bottom half of Q
     double squareConstant=(deltaT*deltaT);
-    for (int row=0; row<numberOfMeasurements; row++) {
-        int column=numberOfMeasurements+row;
-        (*Q)(column, row)=cubeConstant*theNoise(row);
-        (*Q)(column, column)=squareConstant*theNoise(row);
+    for (int row=0; row<numberOfStateVariables; row++) {
+        int column=numberOfStateVariables+row;
+        Q(column, row)=cubeConstant*theNoise(row);
+        Q(column, column)=squareConstant*theNoise(row);
     }
-    if (Tools::TESTING) std::cout << "updateQ-updateQ-bottom half-Q" <<  Tools::toString(*Q) << std::endl;
-    return (*Q);
+    if (Tools::TESTING) std::cout << "updateQ-updateQ-bottom half-Q" <<  Tools::toString(Q) << std::endl;
+    return Q;
 }
 
 
@@ -236,10 +272,18 @@ bool Tools::areSame(MatrixXd a, MatrixXd b) {
     return true;
 }
 
-static const double EPSILON=0.0001;
+static const double EPSILON=1.e-6;
 
 bool Tools::areSame(double a, double b) {
     return fabs(a - b) < EPSILON;
+}
+
+bool Tools::isZero(double a) {
+    return fabs(a) < EPSILON;
+}
+
+bool Tools::isNotZero(double a) {
+    return !isZero(a);
 }
 
 std::string Tools::toString(VectorXd vector) {

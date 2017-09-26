@@ -56,7 +56,7 @@ public:
    * Updates the state by using standard Kalman Filter equations
    * @param z The measurement at k+1
    */
-  void Update(const Eigen::VectorXd &z);
+  void Update(const Eigen::VectorXd &z, const bool isRadar);
 
   /**
    * Updates the state by using Extended Kalman Filter equations

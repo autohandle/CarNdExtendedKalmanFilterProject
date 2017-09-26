@@ -30,24 +30,31 @@ public:
   */
   static MatrixXd CalculateHj(const VectorXd& x_state);
     
-  static void filter(VectorXd &x, MatrixXd &P, MatrixXd F, MatrixXd Q, VectorXd z, MatrixXd H, MatrixXd R, MatrixXd I);
-  static void predict(VectorXd &x, MatrixXd &P, MatrixXd F, MatrixXd Q );
-  static void measurementUpdate(VectorXd &x, MatrixXd &P, VectorXd z, MatrixXd H, MatrixXd R, MatrixXd I );
+  static void filter(VectorXd &x, MatrixXd &P, const MatrixXd &F, const MatrixXd &Q, const VectorXd &z, const MatrixXd &H, const MatrixXd &R, const MatrixXd &I, const bool isRadar);
+  static void predict(VectorXd &x, MatrixXd &P, const MatrixXd &F, const MatrixXd &Q );
+  static void measurementUpdate(VectorXd &x, MatrixXd &P, const VectorXd &z, const MatrixXd &H, const MatrixXd &R, const MatrixXd &I , const bool isRadar);
 
   static VectorXd updateX(VectorXd &x, const VectorXd &theMeasurement );
 
   static MatrixXd makeF(float deltaT, VectorXd theMeasurements);
   static MatrixXd makeF(float deltaT, int theNumberOfPositions);
-  static MatrixXd updateF(float deltaT, MatrixXd *F);
+  static MatrixXd updateF(const float deltaT, MatrixXd &F);
 
-  static MatrixXd makeQ(float deltaT, int theNumberOfMeasurements, VectorXd theNoise);
-  static MatrixXd makeQ(float deltaT, VectorXd theMeasurements, VectorXd theNoise);
-  static MatrixXd updateQ(float deltaT, VectorXd theNoise, MatrixXd *Q);
+  static MatrixXd makeQ(const float deltaT, const int theNumberOfMeasurements, const VectorXd &theNoise);
+  static MatrixXd makeQ(const float deltaT, const VectorXd &theMeasurements, const VectorXd &theNoise);
+  static MatrixXd updateQ(const float deltaT, const VectorXd &theNoise, MatrixXd &Q);
 
   static bool areSame(VectorXd a, VectorXd b);
   static bool areSame(MatrixXd a, MatrixXd b);
   static bool areSame(double a, double b);
+  static bool isZero(double a);
+  static bool isNotZero(double a);
 
+  static double normalizeAngle(double angle) {
+        double a = fmod(angle + M_PI, 2 * M_PI);
+        return a >= 0 ? (a - M_PI) : (a + M_PI);
+  }
+    
   static const bool TESTING=true;
 
   static std::string toString(VectorXd vector);
