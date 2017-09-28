@@ -33,7 +33,7 @@ void KalmanFilter::Update(const VectorXd &z, const bool isRadar) {
   */
     int sizeOfStateSpace=x_.size();
     MatrixXd I = MatrixXd::Identity(sizeOfStateSpace, sizeOfStateSpace);
-    Tools::measurementUpdate(x_, P_, z, H_, R_, I, isRadar);
+    x_=Tools::measurementUpdate(x_, P_, z, H_, R_, I, isRadar);
 }
 
 void KalmanFilter::UpdateEKF(const VectorXd &z) {

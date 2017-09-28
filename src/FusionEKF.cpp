@@ -18,7 +18,7 @@ FusionEKF::FusionEKF() {
 
   // initializing matrices
   R_laser_ = MatrixXd(2, 2); // px, py
-  R_radar_ = MatrixXd(3, 3); // rho, phi, rho dot
+  R_radar_ = MatrixXd(3, 3); // rho, phi, rhoDot
     
   H_laser_ = MatrixXd(2, 4);
   H_laser_ <<   1, 0, 0, 0,  // measure vector is: px py
@@ -33,6 +33,10 @@ FusionEKF::FusionEKF() {
   R_radar_ <<   0.09,   0,      0,
                 0,      0.0009, 0,
                 0,      0,      0.09;
+  R_radar_ <<   0.09,   0,      0,
+                0,      0.0006, 0,
+                0,      0,      0.09;
+
 
   /**
   TODO:
@@ -52,15 +56,15 @@ FusionEKF::FusionEKF() {
 FusionEKF::~FusionEKF() {}
 
 void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
-    double dt = 0.;
     
-    cout << "ProcessMeasurement-measurement_pack.sensor_type_:" << measurement_pack.sensor_type_ << ", dt:" << dt << "," << endl << "ekf_.x_:" << Tools::toString(ekf_.x_) << endl;
+    cout << "ProcessMeasurement-measurement_pack.sensor_type_:" << measurement_pack.sensor_type_ << "," << endl << "ekf_.x_:" << Tools::toString(ekf_.x_) << endl;
     cout << "ProcessMeasurement-is radar:" << (measurement_pack.sensor_type_==MeasurementPackage::RADAR) << endl;
     
     
     /*****************************************************************************
      *  Initialization
      ****************************************************************************/
+    double dt = 0.;
     if (!is_initialized_) {
         /**
          TODO:
@@ -73,8 +77,8 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
         
         cout << "ProcessMeasurement-Initialization-EKF: " << endl;
         ekf_.x_ = VectorXd(4);
-        ekf_.x_ << 1, 1, 1, 1;
-        //ekf_.x_ << 0, 0, 0, 0;
+        //ekf_.x_ << 1, 1, 1, 1;
+        ekf_.x_ << 0, 0, 0, 0;
         
         // KalmanFilter ekf_;
         // ekf_.x_ = measurement_pack.raw_measurements_;// this my not zero vx & vy
@@ -101,13 +105,13 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
         ekf_.R_ <<  0.0225, 0,
                     0,      0.0225;
         
-        ekf_.x_=Tools::updateX(ekf_.x_, measurement_pack.raw_measurements_);
-        
-        //if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR) {
-        //    FusionEKF::updateFromRadar(dt, measurement_pack.raw_measurements_);
-        //} else if (measurement_pack.sensor_type_ == MeasurementPackage::LASER) {
-        //    FusionEKF::updateFromLaser(dt, measurement_pack.raw_measurements_);
-        //}
+        if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR) {
+            //FusionEKF::updateFromRadar(dt, measurement_pack.raw_measurements_);
+            assert(1==0);
+        } else if (measurement_pack.sensor_type_ == MeasurementPackage::LASER) {
+            ekf_.x_=Tools::updateX(ekf_.x_, measurement_pack.raw_measurements_);
+            //FusionEKF::updateFromLaser(dt, measurement_pack.raw_measurements_);
+        }
         
         is_initialized_ = true;
         return;
@@ -128,11 +132,20 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
      * Use noise_ax = 9 and noise_ay = 9 for your Q matrix.
      */
     
-    ekf_.F_=Tools::updateF(dt, ekf_.F_); // linear F for both LASER & RADAR
+    ekf_.F_=Tools::updateF(dt, ekf_.F_); // linear F for both LASER & RADAR, could skip this if new dt == old dt
+    ekf_.Q_=Tools::updateQ(dt, processNoise, ekf_.Q_);
+
+    if (Tools::TESTING) {
+        std::cout << "Tools::ProcessMeasurement-before predict-P:" << Tools::toString(ekf_.P_) << std::endl
+            << "x:" <<Tools::toString(ekf_.x_) << std::endl
+            << "F:" <<Tools::toString(ekf_.F_) << std::endl
+            << "Q:" <<Tools::toString(ekf_.Q_) << std::endl;
+    }
     ekf_.Predict(); // same linear predict for both LASER & RADAR
-    std::cout << "Tools::ProcessMeasurement-after predict-P:" << Tools::toString(ekf_.P_) << std::endl
+    if (Tools::TESTING) {
+        std::cout << "Tools::ProcessMeasurement-after predict-P:" << Tools::toString(ekf_.P_) << std::endl
                 << "x:" <<Tools::toString(ekf_.x_) << std::endl;
-    
+    }
     /*****************************************************************************
      *  Update
      ****************************************************************************/
@@ -158,14 +171,15 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
 
 void FusionEKF::updateFromLaser(double dt, const VectorXd &rawMeasurements) {
     assert(Tools::isNotZero(dt));
-    ekf_.Q_=Tools::updateQ(dt, processNoise, ekf_.Q_);
+    //ekf_.Q_=Tools::updateQ(dt, processNoise, ekf_.Q_);
     ekf_.H_=H_laser_;
     ekf_.R_=R_laser_;
-    if (Tools::TESTING) std::cout << "updateFromLaser-F:" <<  Tools::toString(ekf_.F_) << std::endl
+    if (Tools::TESTING) {
+        if (Tools::TESTING) std::cout << "updateFromLaser-F:" <<  Tools::toString(ekf_.F_) << std::endl
                                   << ", Q:" <<  Tools::toString(ekf_.Q_) << std::endl
                                   << ", H:" <<  Tools::toString(ekf_.H_) << std::endl
                                   << ", R:" <<  Tools::toString(ekf_.R_) << std::endl;
-    
+    }
     ekf_.Update(rawMeasurements, false /* isRadar==false*/);// 2x for laser
     /**
      Initialize state.
@@ -177,14 +191,17 @@ void FusionEKF::updateFromRadar(double dt, const VectorXd &rawMeasurements) {
     /**
      Convert radar from polar to cartesian coordinates and initialize state.
      */
-    ekf_.Q_=Tools::updateQ(dt, processNoise, ekf_.Q_);
+    //ekf_.Q_=Tools::updateQ(dt, processNoise, ekf_.Q_);
     ekf_.H_=Tools::CalculateHj(ekf_.x_);
     ekf_.R_=R_radar_;
-    if (Tools::TESTING) std::cout << "updateFromRadar-F:" <<  Tools::toString(ekf_.F_) << std::endl
+    if (Tools::TESTING) std::cout << "updateFromRadar-before-F:" <<  Tools::toString(ekf_.F_) << std::endl
+                                  << ", P:" <<  Tools::toString(ekf_.P_) << std::endl
                                   << ", Q:" <<  Tools::toString(ekf_.Q_) << std::endl
                                   << ", H:" <<  Tools::toString(ekf_.H_) << std::endl
                                   << ", R:" <<  Tools::toString(ekf_.R_) << std::endl;    
     ekf_.Update(rawMeasurements, true /* isRadar==false*/);
+    if (Tools::TESTING) std::cout << "updateFromRadar-after-P:" <<  Tools::toString(ekf_.P_) << std::endl
+        << ", x:" <<  Tools::toString(ekf_.x_) << std::endl;
     /**
      Initialize state.
      */

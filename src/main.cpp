@@ -223,7 +223,8 @@ int runAsServer(FusionEKF fusionEKF) {
                     estimations.push_back(estimate);
                     
                     VectorXd RMSE = tools.CalculateRMSE(estimations, ground_truth);
-                    
+                    if (Tools::TESTING) cout<<"runAsServer-RMSE: <"<< Tools::toString(RMSE) << "\n";
+
                     json msgJson;
                     msgJson["estimate_x"] = p_x;
                     msgJson["estimate_y"] = p_y;
@@ -282,6 +283,15 @@ int runAsServer(FusionEKF fusionEKF) {
     h.run();    return 0;
 }
 
+VectorXd compareRSME(VectorXd thePreviousRSME, VectorXd theCurrentRSME) {
+    assert (thePreviousRSME.size()==theCurrentRSME.size());
+    VectorXd comparison = VectorXd(4);
+    for (int row=0; row<thePreviousRSME.size(); row++) {
+        comparison(row)=theCurrentRSME(row)-thePreviousRSME(row);
+    }
+    return comparison;
+}
+
 
 int runAsFileProcessor(FusionEKF theFusionEKF, std::string theFileName) {
     
@@ -291,7 +301,10 @@ int runAsFileProcessor(FusionEKF theFusionEKF, std::string theFileName) {
     
     int noise_ax = 5;
     int noise_ay = 5;
+    int lineNumber = 0;
     VectorXd noise = VectorXd(2);
+    VectorXd previousRSME = Eigen::VectorXd(4);
+    previousRSME << 0,0,0,0;
     noise << noise_ax, noise_ay;
     if (Tools::TESTING) std::cout << "noise:" <<  noise << std::endl;
     
@@ -301,9 +314,10 @@ int runAsFileProcessor(FusionEKF theFusionEKF, std::string theFileName) {
         cout<<"runAsFileProcessor-theFileName: "<< theFileName << "\n";
         string measurementLine;
         while ( getline (measurementFile, measurementLine) ){
-            cout << "-------------------------------------------" << "\n"
-            << "<" << measurementLine << ">\n"
-            << "-------------------------------------------" << "\n";
+            lineNumber++;
+            cout << "l-------------------------------------------" << "\n"
+            << lineNumber << ": <" << measurementLine << ">\n"
+            << "l-------------------------------------------" << "\n";
             MeasurementPackage measurementPackage = createMeasurementPackage(measurementLine);
             if (measurementPackage.sensor_type_ == MeasurementPackage::RADAR || measurementPackage.sensor_type_ == MeasurementPackage::LASER) {
                 theFusionEKF.ProcessMeasurement(measurementPackage);
@@ -316,6 +330,10 @@ int runAsFileProcessor(FusionEKF theFusionEKF, std::string theFileName) {
                 estimates.push_back(estimate);
                 VectorXd rsme = Tools::CalculateRMSE(estimates, groundTruthVector);
                 cout<<"runAsFileProcessor-rsme: <"<< Tools::toString(rsme) << "\n";
+                cout << "r-------------------------------------------" << "\n"
+                << "<" << Tools::toString(compareRSME(previousRSME, rsme)) << ">\n"
+                << "-r------------------------------------------" << "\n";
+                previousRSME=rsme;
             } else {
                 cout << "runAsFileProcessor-unknown-measurement_pack.sensor_type_:" << measurementPackage.sensor_type_ << endl;
             }

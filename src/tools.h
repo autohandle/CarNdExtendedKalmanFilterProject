@@ -32,9 +32,10 @@ public:
     
   static void filter(VectorXd &x, MatrixXd &P, const MatrixXd &F, const MatrixXd &Q, const VectorXd &z, const MatrixXd &H, const MatrixXd &R, const MatrixXd &I, const bool isRadar);
   static void predict(VectorXd &x, MatrixXd &P, const MatrixXd &F, const MatrixXd &Q );
-  static void measurementUpdate(VectorXd &x, MatrixXd &P, const VectorXd &z, const MatrixXd &H, const MatrixXd &R, const MatrixXd &I , const bool isRadar);
+  static VectorXd measurementUpdate(const VectorXd &x, MatrixXd &P, const VectorXd &z, const MatrixXd &H, const MatrixXd &R, const MatrixXd &I , const bool isRadar);
 
   static VectorXd updateX(VectorXd &x, const VectorXd &theMeasurement );
+  static VectorXd zPredicted(const VectorXd &x);
 
   static MatrixXd makeF(float deltaT, VectorXd theMeasurements);
   static MatrixXd makeF(float deltaT, int theNumberOfPositions);
@@ -55,7 +56,7 @@ public:
         return a >= 0 ? (a - M_PI) : (a + M_PI);
   }
     
-  static const bool TESTING=true;
+  static const bool TESTING=false;
 
   static std::string toString(VectorXd vector);
   static std::string toString(MatrixXd matrix);
