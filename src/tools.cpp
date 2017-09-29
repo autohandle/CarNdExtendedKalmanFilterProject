@@ -95,22 +95,39 @@ void Tools::predict(VectorXd &x, MatrixXd &P, const MatrixXd &F, const MatrixXd 
     MatrixXd Ft = F.transpose();
     P = F * P * Ft + Q;
     if (TESTING) std::cout << "Tools::predict-after-F=" << Tools::toString(F) << std::endl
-    << "Q:" << Tools::toString(Q) << std::endl
-    << "P:" << Tools::toString(P) << std::endl
-    << "x:" << Tools::toString(x) << std::endl;
+        << "Q:" << Tools::toString(Q) << std::endl
+        << "P:" << Tools::toString(P) << std::endl
+        << "x:" << Tools::toString(x) << std::endl;
+}
+
+VectorXd Tools::convertRadarToStateVector(const VectorXd &theRadarMeasurement) {
+    double rho = theRadarMeasurement[0];
+    assert(isNotZero(rho));
+    double phi = theRadarMeasurement[1];
+    assert (abs(phi) <= M_PI);
+    double rhoDot = theRadarMeasurement[2];
+    double px = rho*sin(phi);
+    double py = rho*cos(phi);
+    double vx = rhoDot*sin(phi);
+    double vy = rhoDot*sin(phi);
+    
+    VectorXd stateVector=VectorXd(4);
+    stateVector << px, py, vx, vy;
+
+    return stateVector;
 }
 
 VectorXd Tools::zPredicted(const VectorXd &x) {
-    float px = x[0];
-    float py = x[1];
-    float vx = x[2];
-    float vy = x[3];
+    double px = x[0];
+    double py = x[1];
+    double vx = x[2];
+    double vy = x[3];
     
-    float rho = sqrt(px*px+py*py);
+    double rho = sqrt(px*px+py*py);
     assert(isNotZero(rho));
-    float phi = atan2(py,px);
+    double phi = atan2(py,px);
     assert (abs(phi) <= M_PI);
-    float rhoDot = (px*vx+py*vy)/rho;
+    double rhoDot = (px*vx+py*vy)/rho;
     
     VectorXd zPredicted=VectorXd(3);
     zPredicted[0]=rho;
@@ -184,10 +201,19 @@ VectorXd Tools::measurementUpdate(const VectorXd &xPredicted, MatrixXd &P, const
     return xNewState;
 }
 
-VectorXd Tools::updateX(VectorXd &x, const VectorXd &theMeasurement ) {// initialize x from 1st measurement 
-    assert(x.size() >= theMeasurement.size());
-    for (int i=0; i<theMeasurement.size(); i++) {
-        x(i)=theMeasurement(i);
+VectorXd Tools::updateX(VectorXd &x, const VectorXd &theLaserMeasurement ) {// initialize x from laser measurement
+    assert(x.size() >= theLaserMeasurement.size());
+    for (int i=0; i<theLaserMeasurement.size(); i++) {
+        x(i)=theLaserMeasurement(i);
+    }
+    return x;
+}
+
+
+VectorXd Tools::xUpdateFromRadar(VectorXd &x, const VectorXd &theRadarMeasurement ) {// initialize x from rader measurement
+    assert(x.size() >= theRadarMeasurement.size());
+    for (int i=0; i<theRadarMeasurement.size(); i++) {
+        x(i)=theRadarMeasurement(i);
     }
     return x;
 }
@@ -246,13 +272,13 @@ MatrixXd Tools::makeQ(const float deltaT, const int theStateVectorSize, const Ve
 }
 
 MatrixXd Tools::updateQ(const float deltaT, const VectorXd &theNoise, MatrixXd &Q) {
-    assert (deltaT<1) ;
     // initialize Q
     Q.fill(0.);
     if (Tools::TESTING) {
         std::cout << "updateQ-deltaT:" <<  deltaT << std::endl
         << "theNoise:" << Tools::toString(theNoise) << std::endl;
     }
+    assert (deltaT<1) ;
     // initialialize top half of Q
     double quadConstant=(deltaT*deltaT*deltaT*deltaT)/4.;
     double cubeConstant=(deltaT*deltaT*deltaT)/2.;

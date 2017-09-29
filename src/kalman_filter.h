@@ -1,69 +1,186 @@
 #ifndef KALMAN_FILTER_H_
 #define KALMAN_FILTER_H_
 #include "Eigen/Dense"
+#include <iostream>
+#include "tools.h"
+
+class KalmanFilterArrays {
+public:
+    
+    // state vector
+    Eigen::VectorXd x_;
+    Eigen::VectorXd& x() {
+        return x_;
+    }
+    
+    // state covariance matrix
+    Eigen::MatrixXd P_;
+    Eigen::MatrixXd& P() {
+        return P_;
+    }
+    
+    // state transition matrix
+    Eigen::MatrixXd F_;
+    Eigen::MatrixXd& F() {
+        return F_;
+    }
+    
+    // process covariance matrix
+    Eigen::MatrixXd Q_;
+    Eigen::MatrixXd& Q() {
+        return Q_;
+    }
+    
+    // measurement matrix
+    Eigen::MatrixXd H_;
+    Eigen::MatrixXd& H() {
+        return H_;
+    }
+    
+    // measurement covariance matrix
+    Eigen::MatrixXd R_;
+    Eigen::MatrixXd& R() {
+        return R_;
+    }
+
+    /**
+     * Constructor
+     */
+    KalmanFilterArrays() {
+        std::cout << "KalmanFilterArrays()" << std::endl;
+        std::cout << "x" << Tools::toString(x()) << std::endl;
+    }
+    
+    std::string toString();
+};
 
 class KalmanFilter {
 public:
+    // state vector
+    Eigen::VectorXd& x() {
+        return kalmanArrays().x();
+    }
+    
+    // state covariance matrix
+    Eigen::MatrixXd& P() {
+        return kalmanArrays().P();
+    }
+    
+    // state transition matrix
+    Eigen::MatrixXd& F() {
+        return kalmanArrays().F();
+    }
+    
+    // process covariance matrix
+    Eigen::MatrixXd& Q() {
+        return kalmanArrays().Q();
+    }
+    
+    // measurement matrix
+    Eigen::MatrixXd& H() {
+        return kalmanArrays().H();
+    }
+    
+    // measurement covariance matrix
+    Eigen::MatrixXd& R() {
+        return kalmanArrays().R();
+    }
+    
+    std::string toString() {
+        return kalmanArrays().toString();
+    }
+    
+private:
+    
+    KalmanFilterArrays& kalmanFilterArrays;
+    KalmanFilterArrays& kalmanArrays() {
+        return kalmanFilterArrays;
+    }
+    
+public:
+    /**
+     * Constructor
+     */
+    KalmanFilter(KalmanFilterArrays &theKalmanFilterArrays);
+    
+    /**
+     * Destructor
+     */
+    virtual ~KalmanFilter();
+    
+    /**
+     * Init Initializes Kalman filter
+     * @param x_in Initial state
+     * @param P_in Initial state covariance
+     * @param F_in Transition matrix
+     * @param H_in Measurement matrix
+     * @param R_in Measurement covariance matrix
+     * @param Q_in Process covariance matrix
+     */
+    void Init(Eigen::VectorXd &x_in, Eigen::MatrixXd &P_in, Eigen::MatrixXd &F_in,
+              Eigen::MatrixXd &H_in, Eigen::MatrixXd &R_in, Eigen::MatrixXd &Q_in);
+    
+    /**
+     * Prediction Predicts the state and the state covariance
+     * using the process model
+     * @param delta_T Time between k and k+1 in s
+     */
+    virtual void Predict(const double deltaT, const Eigen::VectorXd &theProcessNoise);
+    virtual void Predict();
+    
+    /**
+     * Updates the state by using standard Kalman Filter equations
+     * @param z The measurement at k+1
+     */
+    virtual void Update(const Eigen::VectorXd &z, const bool isRadar);
+    
+    /**
+     * Updates the state by using Extended Kalman Filter equations
+     * @param z The measurement at k+1
+     */
+    void UpdateEKF(const Eigen::VectorXd &z);
+    
+};
 
-  // state vector
-  Eigen::VectorXd x_;
+class ExtendedKalmanFilter: protected KalmanFilter {
+public:
+    
+    ExtendedKalmanFilter(KalmanFilterArrays &theKalmanFilterArrays) : KalmanFilter::KalmanFilter(theKalmanFilterArrays) {
+    }
 
-  // state covariance matrix
-  Eigen::MatrixXd P_;
+    void Predict(const double deltaT, const Eigen::VectorXd &theProcessNoise) {
+        KalmanFilter::Predict(deltaT, theProcessNoise);
+    }
+    
+    void Update(const Eigen::VectorXd &z, const bool isRadar);
+};
 
-  // state transition matrix
-  Eigen::MatrixXd F_;
+class LaserFilter: protected KalmanFilter {
+public:
+    
+    /**
+     * Constructor
+     */
+    LaserFilter(KalmanFilterArrays &theKalmanFilterArrays) : KalmanFilter::KalmanFilter(theKalmanFilterArrays) {
+    }
 
-  // process covariance matrix
-  Eigen::MatrixXd Q_;
+    void Predict(const double deltaT, const Eigen::VectorXd &theProcessNoise) {
+        KalmanFilter::Predict(deltaT, theProcessNoise);
+    }
+};
 
-  // measurement matrix
-  Eigen::MatrixXd H_;
+class RadarFilter: protected ExtendedKalmanFilter {
+public:
+    
+    /**
+     * Constructor
+     */
+    RadarFilter(KalmanFilterArrays &theKalmanFilterArrays) : ExtendedKalmanFilter::ExtendedKalmanFilter(theKalmanFilterArrays) {
+    }
 
-  // measurement covariance matrix
-  Eigen::MatrixXd R_;
-
-  /**
-   * Constructor
-   */
-  KalmanFilter();
-
-  /**
-   * Destructor
-   */
-  virtual ~KalmanFilter();
-
-  /**
-   * Init Initializes Kalman filter
-   * @param x_in Initial state
-   * @param P_in Initial state covariance
-   * @param F_in Transition matrix
-   * @param H_in Measurement matrix
-   * @param R_in Measurement covariance matrix
-   * @param Q_in Process covariance matrix
-   */
-  void Init(Eigen::VectorXd &x_in, Eigen::MatrixXd &P_in, Eigen::MatrixXd &F_in,
-      Eigen::MatrixXd &H_in, Eigen::MatrixXd &R_in, Eigen::MatrixXd &Q_in);
-
-  /**
-   * Prediction Predicts the state and the state covariance
-   * using the process model
-   * @param delta_T Time between k and k+1 in s
-   */
-  void Predict();
-
-  /**
-   * Updates the state by using standard Kalman Filter equations
-   * @param z The measurement at k+1
-   */
-  void Update(const Eigen::VectorXd &z, const bool isRadar);
-
-  /**
-   * Updates the state by using Extended Kalman Filter equations
-   * @param z The measurement at k+1
-   */
-  void UpdateEKF(const Eigen::VectorXd &z);
-
+    void Predict(const double deltaT, const Eigen::VectorXd &theProcessNoise) {
+        ExtendedKalmanFilter::Predict(deltaT, theProcessNoise);
+    }
 };
 
 #endif /* KALMAN_FILTER_H_ */

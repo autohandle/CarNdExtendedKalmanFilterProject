@@ -35,7 +35,10 @@ public:
   static VectorXd measurementUpdate(const VectorXd &x, MatrixXd &P, const VectorXd &z, const MatrixXd &H, const MatrixXd &R, const MatrixXd &I , const bool isRadar);
 
   static VectorXd updateX(VectorXd &x, const VectorXd &theMeasurement );
+  static VectorXd xUpdateFromRadar(VectorXd &x, const VectorXd &theMeasurement );// initialize x from rader measurement
+
   static VectorXd zPredicted(const VectorXd &x);
+  static VectorXd convertRadarToStateVector(const VectorXd &theRadarMeasurement);
 
   static MatrixXd makeF(float deltaT, VectorXd theMeasurements);
   static MatrixXd makeF(float deltaT, int theNumberOfPositions);
