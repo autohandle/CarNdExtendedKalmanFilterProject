@@ -155,10 +155,16 @@ public:
      */
     virtual void Update(const Eigen::VectorXd &z, const bool isRadar);
     
+    virtual Eigen::VectorXd zPredicted(const Eigen::VectorXd &x);
+    virtual Eigen::VectorXd normalize(Eigen::VectorXd &y);
+    
+    Eigen::VectorXd measurementUpdate(const Eigen::VectorXd &xPredicted, Eigen::MatrixXd &P, const Eigen::VectorXd &z, const Eigen::MatrixXd &H, const Eigen::MatrixXd &R, const Eigen::MatrixXd &I, const bool isRadar);
+    
     /**
      * Updates the state by using Extended Kalman Filter equations
      * @param z The measurement at k+1
      */
+    
     void UpdateEKF(const Eigen::VectorXd &z);
     
 };
@@ -174,6 +180,8 @@ public:
     }
     
     virtual void Update(const Eigen::VectorXd &z, const bool isRadar);
+
+    virtual Eigen::VectorXd zPredicted(const Eigen::VectorXd &x);
 };
 
 class LaserFilter: protected KalmanFilter {
@@ -195,6 +203,8 @@ public:
     void Update(const Eigen::VectorXd &z);
 
     void updateX(const VectorXd &theLaserMeasurement );
+
+    Eigen::VectorXd zPredicted(const VectorXd &x);
 };
 
 class RadarFilter: protected ExtendedKalmanFilter {
@@ -213,10 +223,12 @@ public:
     void Predict(const double deltaT, const Eigen::VectorXd &theProcessNoise) {
         ExtendedKalmanFilter::Predict(deltaT, theProcessNoise);
     }
-
+    
     void Update(const Eigen::VectorXd &z, const bool isRadar);
 
-    void updateX(const VectorXd &theRadarMeasurement);
+    void updateX(const Eigen::VectorXd &theRadarMeasurement);
+    Eigen::VectorXd normalize(Eigen::VectorXd &y);
+
 };
 
 #endif /* KALMAN_FILTER_H_ */

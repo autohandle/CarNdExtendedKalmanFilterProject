@@ -174,7 +174,55 @@ void KalmanFilter::Update(const VectorXd &z, const bool isRadar) {
      */
     int sizeOfStateSpace=x().size();
     MatrixXd I = MatrixXd::Identity(sizeOfStateSpace, sizeOfStateSpace);
-    x()=Tools::measurementUpdate(x(), P(), z, H(), R(), I, isRadar);
+    x()=measurementUpdate(x(), P(), z, H(), R(), I, isRadar);
+}
+
+Eigen::VectorXd KalmanFilter::zPredicted(const Eigen::VectorXd &x) {
+    assert(1==0);
+}
+
+Eigen::VectorXd KalmanFilter::normalize(Eigen::VectorXd &y) {
+    return y;
+}
+
+VectorXd KalmanFilter::measurementUpdate(const VectorXd &xPredicted, MatrixXd &P, const VectorXd &z, const MatrixXd &H, const MatrixXd &R, const MatrixXd &I, const bool isRadar) {
+    /*
+     * KF Measurement update step
+     */
+    if (Tools::TESTING) {
+        std::cout << "KalmanFilter::measurementUpdate-xPredicted=" << Tools::toString(xPredicted) << std::endl
+        << "H" << Tools::toString(H) << std::endl
+        << "P" << Tools::toString(P) << std::endl
+        << "R" << Tools::toString(R) << std::endl
+        << "isRadar?" << isRadar << std::endl
+        ;
+    }
+    VectorXd y = z-zPredicted(xPredicted/* 0:rho 1:phi 2:rho dot OR 0:px, 1:py, 2:vx, 3:vy*/);
+    y = normalize(y);
+
+    MatrixXd Ht = H.transpose();
+    if (Tools::TESTING) {
+        std::cout << "KalmanFilter::measurementUpdate:" << toString() << std::endl
+        << "z:" << Tools::toString(z) << std::endl
+        << "y:" << Tools::toString(y)
+        ;
+    }
+    MatrixXd S = H * P * Ht + R;
+    MatrixXd Si = S.inverse();
+    MatrixXd K =  P * Ht * Si;
+    
+    //new state
+    VectorXd xNewState = xPredicted + (K * y);
+    P = (I - K * H) * P;
+    if (Tools::TESTING) {
+        std::cout << "Tools::measurementUpdate-new state-xNewState=" << Tools::toString(xNewState) << std::endl
+        << "P=" << Tools::toString(P) << std::endl
+        << "H=" << Tools::toString(H) << std::endl
+        << "S=" << Tools::toString(S) << std::endl
+        << "K=" << Tools::toString(K) << std::endl
+        ;
+    }
+    return xNewState;
 }
 
 void KalmanFilter::initQ(const float deltaT, const VectorXd &theNoise) {
@@ -187,6 +235,26 @@ void KalmanFilter::initF(const float deltaT) {
 
 void ExtendedKalmanFilter::Update(const VectorXd &z, const bool isRadar) {
     KalmanFilter::Update(z, isRadar);
+}
+
+VectorXd ExtendedKalmanFilter::zPredicted(const VectorXd &x) {
+    double px = x[0];
+    double py = x[1];
+    double vx = x[2];
+    double vy = x[3];
+    
+    double rho = sqrt(px*px+py*py);
+    assert(Tools::isNotZero(rho));
+    double phi = atan2(py,px);
+    assert (abs(phi) <= M_PI);
+    double rhoDot = (px*vx+py*vy)/rho;
+    
+    VectorXd zPredicted=VectorXd(3);
+    zPredicted[0]=rho;
+    zPredicted[1]=phi;
+    zPredicted[2]=rhoDot;
+    
+    return zPredicted;
 }
 
 LaserFilter::LaserFilter(KalmanFilterArrays &theKalmanFilterArrays)  : KalmanFilter::KalmanFilter(theKalmanFilterArrays){
@@ -210,6 +278,10 @@ void LaserFilter::updateX(const VectorXd &theLaserMeasurement ) {// initialize x
     for (int i=0; i<theLaserMeasurement.size(); i++) {
         x()(i)=theLaserMeasurement(i);
     }
+}
+
+VectorXd LaserFilter::zPredicted(const VectorXd &x) {
+    return H()*x;
 }
 
 RadarFilter::RadarFilter(KalmanFilterArrays &theKalmanFilterArrays)  : ExtendedKalmanFilter::ExtendedKalmanFilter(theKalmanFilterArrays) {
@@ -267,6 +339,11 @@ void RadarFilter::updateX(const VectorXd &theRadarMeasurement) {
     
     VectorXd stateVector=VectorXd(4);
     x() << px, py, vx, vy;
+}
+
+Eigen::VectorXd RadarFilter::normalize(Eigen::VectorXd &y) {
+    y(1)=fmod(y(1), M_PI);
+    return y;
 }
 
 //void KalmanFilter::UpdateEKF(const VectorXd &z) {
