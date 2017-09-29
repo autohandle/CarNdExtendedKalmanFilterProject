@@ -28,8 +28,7 @@ public:
   /**
   * A helper method to calculate Jacobians.
   */
-  static MatrixXd CalculateHj(const VectorXd& x_state);
-    
+      
   static void filter(VectorXd &x, MatrixXd &P, const MatrixXd &F, const MatrixXd &Q, const VectorXd &z, const MatrixXd &H, const MatrixXd &R, const MatrixXd &I, const bool isRadar);
   static void predict(VectorXd &x, MatrixXd &P, const MatrixXd &F, const MatrixXd &Q );
   static VectorXd measurementUpdate(const VectorXd &x, MatrixXd &P, const VectorXd &z, const MatrixXd &H, const MatrixXd &R, const MatrixXd &I , const bool isRadar);
@@ -39,14 +38,6 @@ public:
 
   static VectorXd zPredicted(const VectorXd &x);
   static VectorXd convertRadarToStateVector(const VectorXd &theRadarMeasurement);
-
-  static MatrixXd makeF(float deltaT, VectorXd theMeasurements);
-  static MatrixXd makeF(float deltaT, int theNumberOfPositions);
-  static MatrixXd updateF(const float deltaT, MatrixXd &F);
-
-  static MatrixXd makeQ(const float deltaT, const int theNumberOfMeasurements, const VectorXd &theNoise);
-  static MatrixXd makeQ(const float deltaT, const VectorXd &theMeasurements, const VectorXd &theNoise);
-  static MatrixXd updateQ(const float deltaT, const VectorXd &theNoise, MatrixXd &Q);
 
   static bool areSame(VectorXd a, VectorXd b);
   static bool areSame(MatrixXd a, MatrixXd b);

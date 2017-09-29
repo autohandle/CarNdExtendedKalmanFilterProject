@@ -43,15 +43,33 @@ public:
         return R_;
     }
 
+    int ID() {
+        return id;
+    }
     /**
      * Constructor
      */
     KalmanFilterArrays() {
+        id++;
         std::cout << "KalmanFilterArrays()" << std::endl;
         std::cout << "x" << Tools::toString(x()) << std::endl;
     }
     
     std::string toString();
+
+    void initQ(const float deltaT, const Eigen::VectorXd &theNoise);
+    void initQ(const float deltaT, const VectorXd &theStateVector, const VectorXd &theNoise);
+    static Eigen::MatrixXd makeQ(const float deltaT, const int theNumberOfMeasurements, const Eigen::VectorXd &theNoise);
+    static Eigen::MatrixXd makeQ(const float deltaT, const Eigen::VectorXd &theMeasurements, const Eigen::VectorXd &theNoise);
+    static Eigen::MatrixXd updateQ(const float deltaT, const Eigen::VectorXd &theNoise, Eigen::MatrixXd &Q);
+
+    void initF(float deltaT);
+    static Eigen::MatrixXd makeF(float deltaT, Eigen::VectorXd theMeasurements);
+    static Eigen::MatrixXd makeF(float deltaT, int theNumberOfPositions);
+    static Eigen::MatrixXd updateF(const float deltaT, Eigen::MatrixXd &F);
+
+private:
+    static int id;
 };
 
 class KalmanFilter {
@@ -86,6 +104,9 @@ public:
         return kalmanArrays().R();
     }
     
+    void initQ(const float deltaT, const VectorXd &theNoise);
+    void initF(float deltaT);
+
     std::string toString() {
         return kalmanArrays().toString();
     }
@@ -152,35 +173,50 @@ public:
         KalmanFilter::Predict(deltaT, theProcessNoise);
     }
     
-    void Update(const Eigen::VectorXd &z, const bool isRadar);
+    virtual void Update(const Eigen::VectorXd &z, const bool isRadar);
 };
 
 class LaserFilter: protected KalmanFilter {
+private:
+    MatrixXd R_;
+    MatrixXd H_;
+    
 public:
     
     /**
      * Constructor
      */
-    LaserFilter(KalmanFilterArrays &theKalmanFilterArrays) : KalmanFilter::KalmanFilter(theKalmanFilterArrays) {
-    }
-
+    LaserFilter(KalmanFilterArrays &theKalmanFilterArrays);
+    
     void Predict(const double deltaT, const Eigen::VectorXd &theProcessNoise) {
         KalmanFilter::Predict(deltaT, theProcessNoise);
     }
+
+    void Update(const Eigen::VectorXd &z);
+
+    void updateX(const VectorXd &theLaserMeasurement );
 };
 
 class RadarFilter: protected ExtendedKalmanFilter {
+private:
+    MatrixXd R_;
+    
+    static MatrixXd CalculateHj(const VectorXd& x_state);
+
 public:
     
     /**
      * Constructor
      */
-    RadarFilter(KalmanFilterArrays &theKalmanFilterArrays) : ExtendedKalmanFilter::ExtendedKalmanFilter(theKalmanFilterArrays) {
-    }
-
+    RadarFilter(KalmanFilterArrays &theKalmanFilterArrays);
+    
     void Predict(const double deltaT, const Eigen::VectorXd &theProcessNoise) {
         ExtendedKalmanFilter::Predict(deltaT, theProcessNoise);
     }
+
+    void Update(const Eigen::VectorXd &z, const bool isRadar);
+
+    void updateX(const VectorXd &theRadarMeasurement);
 };
 
 #endif /* KALMAN_FILTER_H_ */

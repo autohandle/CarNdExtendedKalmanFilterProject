@@ -31,6 +31,7 @@ public:
     /**
      * Kalman Filter update and prediction math lives in here.
      */
+    KalmanFilterArrays anotherKalmanFilterArrays;
     KalmanFilterArrays kalmanFilterArrays;
     KalmanFilter ekf_ = KalmanFilter::KalmanFilter(kalmanFilterArrays);
     LaserFilter laserFilter = LaserFilter(kalmanFilterArrays);;
