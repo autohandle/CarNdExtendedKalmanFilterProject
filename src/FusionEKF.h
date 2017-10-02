@@ -31,11 +31,11 @@ public:
     /**
      * Kalman Filter update and prediction math lives in here.
      */
-    KalmanFilterArrays anotherKalmanFilterArrays;
-    KalmanFilterArrays kalmanFilterArrays = KalmanFilterArrays::KalmanFilterArrays();
-    KalmanFilter ekf_ = KalmanFilter::KalmanFilter(kalmanFilterArrays);
-    LaserFilter laserFilter = LaserFilter(kalmanFilterArrays);;
-    RadarFilter radarFilter = RadarFilter(kalmanFilterArrays);;
+    const KalmanFilterArrays anotherKalmanFilterArrays;
+    KalmanFilterArrays kalmanFilterArrays;
+    KalmanFilter ekf_;
+    LaserFilter laserFilter;
+    RadarFilter radarFilter;
     
     
 private:

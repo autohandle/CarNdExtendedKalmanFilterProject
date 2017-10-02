@@ -10,8 +10,9 @@ using std::vector;
 
 /*
  * Constructor.
+ *
  */
-FusionEKF::FusionEKF() {
+FusionEKF::FusionEKF() : kalmanFilterArrays(), ekf_(kalmanFilterArrays), laserFilter(kalmanFilterArrays), radarFilter (kalmanFilterArrays) {
 
     is_initialized_ = false;
     
