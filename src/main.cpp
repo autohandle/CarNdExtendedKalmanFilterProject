@@ -297,7 +297,7 @@ int runAsFileProcessor(FusionEKF theFusionEKF, std::string theFileName) {
     
     ifstream measurementFile;
     measurementFile.open(theFileName, ios::in);
-    cout<<"runAsFileProcessor-theFileName: <"<< theFileName << ">, is_open? " << measurementFile.is_open() << "\n";
+    if (Tools::TESTING) cout<<"runAsFileProcessor-theFileName: <"<< theFileName << ">, is_open? " << measurementFile.is_open() << "\n";
     
     int noise_ax = 5;
     int noise_ay = 5;
@@ -311,28 +311,32 @@ int runAsFileProcessor(FusionEKF theFusionEKF, std::string theFileName) {
     if (measurementFile.is_open()) {
         vector<VectorXd> estimates;
         vector<VectorXd> groundTruthVector;
-        cout<<"runAsFileProcessor-theFileName: "<< theFileName << "\n";
+        if (Tools::TESTING) cout<<"runAsFileProcessor-theFileName: "<< theFileName << "\n";
         string measurementLine;
         while ( getline (measurementFile, measurementLine) ){
             lineNumber++;
-            cout << "l-------------------------------------------" << "\n"
-            << lineNumber << ": <" << measurementLine << ">\n"
-            << "l-------------------------------------------" << "\n";
+            if (Tools::TESTING) {
+                cout << "l-------------------------------------------" << "\n"
+                << lineNumber << ": <" << measurementLine << ">\n"
+                << "l-------------------------------------------" << "\n";
+            }
             MeasurementPackage measurementPackage = createMeasurementPackage(measurementLine);
             if (measurementPackage.sensor_type_ == MeasurementPackage::RADAR || measurementPackage.sensor_type_ == MeasurementPackage::LASER) {
                 theFusionEKF.ProcessMeasurement(measurementPackage);
                 
                 VectorXd groundTruthValues = createGroundTruthVector(measurementLine);
-                cout<<"runAsFileProcessor-groundTruthValues: <"<< Tools::toString(groundTruthValues) << "\n";
+                if (Tools::TESTING) cout<<"runAsFileProcessor-groundTruthValues: <"<< Tools::toString(groundTruthValues) << "\n";
                 groundTruthVector.push_back(groundTruthValues);
                 VectorXd estimate = createEstimateVector(theFusionEKF);
-                cout<<"runAsFileProcessor-estimate: <"<< Tools::toString(estimate) << "\n";
+                if (Tools::TESTING) cout<<"runAsFileProcessor-estimate: <"<< Tools::toString(estimate) << "\n";
                 estimates.push_back(estimate);
                 VectorXd rsme = Tools::CalculateRMSE(estimates, groundTruthVector);
-                cout<<"runAsFileProcessor-rsme: <"<< Tools::toString(rsme) << "\n";
-                cout << "r-------------------------------------------" << "\n"
-                << "<" << Tools::toString(compareRSME(previousRSME, rsme)) << ">\n"
-                << "-r------------------------------------------" << "\n";
+                if (Tools::TESTING) cout<<"runAsFileProcessor-rsme: <"<< Tools::toString(rsme) << "\n";
+                if (Tools::TESTING) {
+                    cout << "r-------------------------------------------" << "\n"
+                    << "<" << Tools::toString(compareRSME(previousRSME, rsme)) << ">\n"
+                    << "-r------------------------------------------" << "\n";
+                }
                 previousRSME=rsme;
             } else {
                 cout << "runAsFileProcessor-unknown-measurement_pack.sensor_type_:" << measurementPackage.sensor_type_ << endl;
@@ -353,13 +357,13 @@ int main(int argc, char *argv[] )
 
     int status=0;
     
-    cout<<"argc: "<< argc <<"\n";
+    if (Tools::TESTING) cout<<"argc: "<< argc <<"\n";
     if (argc>1) {
-        cout<<"argv[0]: "<< argv[0] <<"\n";
+        if (Tools::TESTING) cout<<"argv[0]: "<< argv[0] <<"\n";
         status=runAsFileProcessor(fusionEKF, argv[1]);
     } else {
         status=runAsServer(fusionEKF);
     }
-  cout<<"status: "<< status <<"\n";
+  if (Tools::TESTING) cout<< "status: " << status <<"\n";
   return(status);
 }

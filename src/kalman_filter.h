@@ -51,8 +51,6 @@ public:
      */
     KalmanFilterArrays() {
         id++;
-        std::cout << "KalmanFilterArrays()" << std::endl;
-        std::cout << "x" << Tools::toString(x()) << std::endl;
     }
     
     std::string toString();

@@ -12,6 +12,7 @@ using std::vector;
  * Constructor.
  */
 FusionEKF::FusionEKF() {
+
     is_initialized_ = false;
     
     previous_timestamp_ = 0.;
@@ -49,7 +50,6 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
         previous_timestamp_= measurement_pack.timestamp_; // initial dt == 0.
         // first measurement
         
-        cout << "ProcessMeasurement-Initialization-EKF: " << endl;
         ekf_.x() = VectorXd(4);
         ekf_.x() << 1, 1, 1, 1;
         //ekf_.x() << 0, 0, 0, 0;
@@ -139,7 +139,9 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
     }
     
     // print the output
-    cout << "x_ = " << ekf_.x() << endl;
-    cout << "P_ = " << ekf_.P() << endl;
+    if (Tools::TESTING) {
+        cout << "x_ = " << ekf_.x() << endl;
+        cout << "P_ = " << ekf_.P() << endl;
+    }
 }
 

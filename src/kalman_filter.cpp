@@ -25,13 +25,13 @@ std::string KalmanFilterArrays::toString() {
 void KalmanFilterArrays::initQ(const float deltaT, const VectorXd &theNoise) {
     //assert(x().size()>0);
     Q()=KalmanFilterArrays::makeQ(deltaT, x(), theNoise);
-    if (true || Tools::TESTING) std::cout << "KalmanFilterArrays::initQ:" <<  toString() << std::endl;
+    if (Tools::TESTING) std::cout << "KalmanFilterArrays::initQ:" <<  toString() << std::endl;
 }
 
 void KalmanFilterArrays::initQ(const float deltaT, const VectorXd &theStateVector, const VectorXd &theNoise) {
     assert(theStateVector.size()>0);
     Q()=KalmanFilterArrays::makeQ(deltaT, theStateVector, theNoise);
-    if (true || Tools::TESTING) std::cout << "KalmanFilterArrays::initQ:" <<  toString() << std::endl;
+    if (Tools::TESTING) std::cout << "KalmanFilterArrays::initQ:" <<  toString() << std::endl;
 }
 
 MatrixXd KalmanFilterArrays::makeQ(const float deltaT, const VectorXd &theStateVector, const VectorXd &theNoise) {
@@ -128,7 +128,7 @@ void KalmanFilter::Init(VectorXd &x_in, MatrixXd &P_in, MatrixXd &F_in,
 }
 
 KalmanFilter::KalmanFilter(KalmanFilterArrays &theKalmanFilterArrays) : kalmanFilterArrays(theKalmanFilterArrays) {
-    if (true || Tools::TESTING) {
+    if (Tools::TESTING) {
         std::cout << "KalmanFilter::KalmanFilter-theKalmanFilterArrays:" << theKalmanFilterArrays.toString() << std::endl;
     }
 }
@@ -153,7 +153,7 @@ void KalmanFilter::Predict() {
      TODO:
      * predict the state
      */
-    if (true || Tools::TESTING) std::cout << "KalmanFilter::Predict-before:" << toString() << std::endl;
+    if (Tools::TESTING) std::cout << "KalmanFilter::Predict-before:" << toString() << std::endl;
     x() = F() * x();
     MatrixXd Ft = F().transpose();
     P() = F() * P() * Ft + Q();
