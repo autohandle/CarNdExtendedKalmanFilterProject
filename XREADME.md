@@ -64,7 +64,7 @@ The RSME obtained for data set 2:
 
 ##### follow the algorithm
 
-The code is structured to execute the correct algrorithm. The `LaserFiler` is a `KalmanFilter`
+The code is structured to execute the correct algrorithm. The `LaserFilter` is a `KalmanFilter`
 
 ```C++
 class LaserFilter: protected KalmanFilter
@@ -219,7 +219,7 @@ The `MeasurementPackage.sensor_type_` is used to call the corrent measurement fu
 
 The program was restructured to use object inheritance to improved comprehension and reduce the number of if-statement checks.
 
-`FusionEKF` could have treated both `LaserFilter` and `RadarFilter` as a `KalmanFilter` all pulled from a hash table based on `MeasurementPackage.sensor_type_`, but I didn't think that improved the program enough for the confusion it would have added.
+`FusionEKF` could have treated both `LaserFilter` and `RadarFilter` as a `KalmanFilter`, both pulled from a hash table based on `MeasurementPackage.sensor_type_`, but I didn't think that a hash table improved the program enough for the confusion it would have added.
 
 #### Video Implementation
 
